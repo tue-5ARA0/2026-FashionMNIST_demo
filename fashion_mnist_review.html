@@ -50,7 +50,7 @@
     button { font: inherit; }
 
     .app {
-      width: min(1180px, calc(100% - 32px));
+      width: 90vw;
       min-height: 100vh;
       margin: auto;
       display: grid;
@@ -125,12 +125,6 @@
       background: var(--panel);
       box-shadow: var(--shadow);
       backdrop-filter: blur(18px);
-      animation: arrive .35s ease both;
-    }
-
-    @keyframes arrive {
-      from { opacity: 0; transform: translateY(10px) scale(.992); }
-      to { opacity: 1; transform: none; }
     }
 
     .question-panel, .answer-panel { padding: clamp(28px, 4.5vw, 58px); }
@@ -183,12 +177,15 @@
 
     .questions, .answers { margin: 0; padding: 0; list-style: none; }
 
-    .questions { display: grid; gap: 12px; }
+    .questions { display: block; }
+    .questions li { display: block; }
+    .questions .number { display: none; }
+    .questions p { margin: 0 0 12px; }
+    .questions ul { margin: 8px 0 8px 1.25em; padding: 0; }
+    .questions li li { display: list-item; margin: 5px 0; }
 
     .questions li {
-      display: grid;
-      grid-template-columns: 30px 1fr;
-      gap: 12px;
+      display: block;
       align-items: start;
       color: #eaebf5;
       line-height: 1.45;
@@ -258,10 +255,22 @@
       border: 1px solid rgba(124,231,172,.18);
     }
 
-    .answers { display: grid; gap: 13px; }
+    .answers {
+      display: grid;
+      align-content: start;
+      gap: 13px;
+      height: min(60vh, 520px);
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+      padding-right: 5px;
+    }
 
-    .answers li {
-      display: none;
+    .answers > li {
+      display: block;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
       padding: 13px 15px;
       border: 1px solid rgba(255,255,255,.08);
       border-radius: 14px;
@@ -271,31 +280,29 @@
       background: rgba(255,255,255,.035);
     }
 
-    .answers li.visible {
-      display: block;
-      animation: answer-in .28s ease both;
-    }
-
-    @keyframes answer-in {
-      from { opacity: 0; transform: translateY(7px); }
-      to { opacity: 1; transform: none; }
+    .answers > li.visible {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .answers strong { color: var(--cyan); }
+    .answers p { margin: 0 0 10px; }
+    .answers ul { margin: 6px 0 10px 1.2em; padding: 0; }
+    .answers li li { display: list-item; margin: 4px 0; }
+    .answers .equation { margin: 8px 0; text-align: center; font-size: 1.05rem; }
     code { color: #e4dcff; font-family: "SFMono-Regular", Consolas, monospace; font-size: .91em; }
+    pre { overflow-x: auto; margin: 0; padding: 14px; border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: rgba(0,0,0,.24); }
+    pre code { color: #dce4ff; white-space: pre; }
 
     .answer-content {
       opacity: 0;
-      transform: translateY(8px);
-      filter: blur(5px);
       pointer-events: none;
-      transition: opacity .28s ease, transform .28s ease, filter .28s ease;
+      transition: opacity .18s ease;
     }
 
     .revealed .answer-content {
       opacity: 1;
-      transform: none;
-      filter: none;
       pointer-events: auto;
     }
 
@@ -306,10 +313,10 @@
       place-items: center;
       padding: 30px;
       text-align: center;
-      transition: opacity .22s ease, transform .22s ease;
+      transition: opacity .18s ease;
     }
 
-    .revealed .reveal-cover { opacity: 0; transform: scale(.98); pointer-events: none; }
+    .revealed .reveal-cover { opacity: 0; pointer-events: none; }
 
     .reveal-inner { max-width: 340px; }
     .reveal-icon { display: block; margin-bottom: 14px; font-size: 2.3rem; }
@@ -371,7 +378,7 @@
     .nav-button:disabled { opacity: .3; cursor: not-allowed; }
 
     @media (max-width: 820px) {
-      .app { width: min(100% - 20px, 680px); padding: 14px 0; }
+      .app { width: 90vw; padding: 14px 0; }
       .top-meta .progress-track { display: none; }
       .slide { grid-template-columns: 1fr; min-height: auto; border-radius: 22px; }
       .question-panel { border-right: 0; border-bottom: 1px solid var(--line); }
@@ -403,7 +410,8 @@
       .answer-content { opacity: 1; transform: none; filter: none; }
       .prompt, .think { color: #444; }
       .questions li, .answers li { color: #111; }
-      .answers li { display: block; border-color: #ccc; }
+      .answers { height: auto; overflow: visible; }
+      .answers li { display: block; visibility: visible; opacity: 1; border-color: #ccc; }
     }
   </style>
 </head>
@@ -467,142 +475,216 @@
   <script>
     const slides = [
       {
-        title: "Data roles & versioning",
-        prompt: "A trustworthy model begins with a trustworthy experimental boundary.",
-        questions: [
-          "What are the distinct jobs of training, validation, and test data?",
-          "What shapes and dtypes do we expect before preprocessing?",
-          "What should DVC record so another team can reproduce the run?"
-        ],
-        answers: [
-          "<strong>Roles:</strong> training data fits the weights; validation data guides architecture, settings, and stopping; test data gives one final estimate on unseen examples. Reusing the test set for decisions makes that estimate optimistically biased.",
-          "<strong>Shapes:</strong> images are <code>(60000, 28, 28)</code> and <code>(10000, 28, 28)</code>: examples × height × width. Raw pixels are <code>uint8</code>; labels are one-dimensional integer arrays.",
-          "<strong>Version:</strong> preserve the exact data artifact/hash, source, split, preparation code, preprocessing, and class map. Git tracks code and DVC pointers; DVC storage holds the large data."
-        ]
+            "title": "Reproducible environments",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why should you record the TensorFlow version and random seed when comparing two training runs? Answer in at most two sentences.</p>"
+            ],
+            "answers": [
+                  "<p>The version of Tensorflow (and other libraries in general) affects the implementations for functions and default settings, etc. The seed you set controls random choices in the code flow, such as initialization and shuffling of the data. Recording both improves reproducibility, although hardware and nondeterministic operations may still produce different results.</p>"
+            ]
       },
       {
-        title: "Validate before training",
-        prompt: "Fail early when the input contract is broken—before wasting an experiment.",
-        questions: [
-          "Which data assertions should stop the pipeline?",
-          "How would you check whether the ten classes are balanced?"
-        ],
-        answers: [
-          "<strong>Assert:</strong> require matching image/label counts, 28×28 shape, numeric finite pixels, the expected value range, and labels 0–9. These checks turn silent data corruption into an immediate, understandable failure.",
-          "<strong>Balance:</strong> compare <code>np.bincount(..., minlength=10)</code> for both splits and inspect class proportions. Balanced totals do not remove the need for per-class evaluation later."
-        ]
+            "title": "An untouched test set",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why should hyperparameters be chosen using validation data rather than the test set? Answer in at most two sentences.</p>"
+            ],
+            "answers": [
+                  "<p>Repeatedly choosing settings using the performance on the test set adapts development to that particular set. Validation data guides these decisions while an untouched test set provides a more independent final evaluation of the model's performance.</p>"
+            ]
       },
       {
-        title: "Preprocessing is a contract",
-        prompt: "Training and serving must agree on what one pixel value means.",
-        questions: [
-          "What range results from dividing pixels by 255?",
-          "Why must train, test, and deployed inputs use the same transformation?",
-          "What goes wrong with double scaling or test-fitted statistics?"
-        ],
-        answers: [
-          "<strong>Range:</strong> dividing by <code>255.0</code> maps <code>[0, 255]</code> to <code>[0, 1]</code> and converts the values to floating point. Verify the result with <code>min()</code>, <code>max()</code>, and <code>dtype</code>.",
-          "<strong>Consistency:</strong> the model learns weights for one numerical distribution. Test and deployed images must follow the identical transformation, or the meaning of each input value changes.",
-          "<strong>Failure:</strong> double scaling shrinks training values to <code>[0, 1/255]</code>; test-fitted statistics leak evaluation information. Package preprocessing with the model so serving cannot improvise it."
-        ]
+            "title": "Check the input contract",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>How would you first print the training-image shape and dtype, and then assert that every image is both 28 by 28 and has one label? Write a short code cell.</p>"
+            ],
+            "answers": [
+                  "<p>These assertions catch incompatible inputs before training.</p>",
+                  "<pre><code>print(train_images.shape, train_images.dtype) # (60000, 28, 28) uint8\nassert train_images.shape[1:] == (28, 28) # Check that each image is 28x28\nassert len(train_images) == len(train_labels) # Check that the number of images matches the number of labels\nassert train_labels.shape == (len(train_images),) # Check that the labels are 1-dim arrays with one label per image\nassert np.issubdtype(train_labels.dtype, np.integer) # Check that the labels are integers\nassert np.all((train_labels &gt;= 0) &amp; (train_labels &lt; 10)) # Check that the labels are in the range [0, 10)</code></pre>"
+            ]
       },
       {
-        title: "From pixels to logits",
-        prompt: "Trace the representation through the network before counting predictions.",
-        questions: [
-          "What is the shape after each layer?",
-          "What does Flatten preserve—and what useful structure does it not exploit?",
-          "Why are there ten outputs, and do they already sum to one?",
-          "Which layer type better captures local visual patterns?"
-        ],
-        answers: [
-          "<strong>Shapes:</strong> <code>(28,28) → 784 → 128 → 10</code>, with the batch dimension carried through every stage. The final ten values correspond to the ten named classes.",
-          "<strong>Flatten:</strong> keeps every pixel and its fixed ordering, but gives the dense layer no built-in knowledge that nearby pixels are related. That spatial relationship must be learned indirectly.",
-          "<strong>Output:</strong> there is one unrestricted logit per class, so the values need not be positive or sum to 1. <code>from_logits=True</code> lets the loss apply softmax in a numerically stable way.",
-          "<strong>Extension:</strong> convolutional layers reuse small filters across locations and preserve spatial structure. This is a useful inductive bias for edges, textures, and clothing shapes."
-        ]
+            "title": "Proper reproducability",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why does committing training code and configuration to Git alone fail to reproduce an experiment? Answer in at most two sentences.</p>"
+            ],
+            "answers": [
+                  "<p>The same code trained on a different dataset can learn different weights and this can produce different evaluation metrics. Therefore, it's important to track the exact dataset and how it was split, too. To achieve this, we can use tools like DVC (Data Version Control) that allow us to version the dataset and track changes in the data. Git can store DVC pointers while a DVC remote stores the large artifacts. This prevents large datasets from being stored in Git while still allowing for reproducibility of experiments.</p>"
+            ]
       },
       {
-        title: "Loss, metric & configuration",
-        prompt: "Separate what the model optimizes from what humans use to judge it.",
-        questions: [
-          "Why sparse categorical cross-entropy?",
-          "Why optimize loss instead of accuracy?",
-          "Which notebook values belong in configuration?",
-          "What evidence should choose the number of epochs?"
-        ],
-        answers: [
-          "<strong>Loss:</strong> sparse categorical cross-entropy matches one integer label among ten mutually exclusive classes. Ordinary categorical cross-entropy would instead expect a ten-value one-hot label.",
-          "<strong>Optimization:</strong> accuracy is intuitive but changes only when the winning class changes, so it supplies poor gradients. Cross-entropy rewards movement toward the correct class even before the prediction flips.",
-          "<strong>Config:</strong> expose epochs, batch size, hidden units, optimizer/learning rate, seed, validation split, paths, and debug mode. Keeping these outside the training logic makes experiments easier to compare.",
-          "<strong>Evidence:</strong> choose the epoch near minimum validation loss—not maximum test accuracy. Early stopping can save and restore that best validation checkpoint automatically."
-        ]
+            "title": "Scale pixel values",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why divide pixels by 255 before training and apply the same division at deployment? Answer in at most two sentences.</p>"
+            ],
+            "answers": [
+                  "<p>Scaling puts the input features on a smaller, consistent numerical range that usually makes optimization easier. This way, there are no features with a much larger scale than others, which can make optimization difficult.</p><p>During deployment, we must use the same scale because the weights were learned for that particular input representation.</p>"
+            ]
       },
       {
-        title: "Track the experiment",
-        prompt: "A result without its context is a number, not a reproducible experiment.",
-        questions: [
-          "What is validation data for?",
-          "Which TensorBoard curves diagnose underfitting or overfitting?",
-          "What must accompany saved weights?",
-          "What changes because Colab storage is temporary?"
-        ],
-        answers: [
-          "<strong>Validation:</strong> use a held-out part of the training data to choose settings and stopping points without consuming the test set. The test set remains reserved for the final model.",
-          "<strong>Curves:</strong> compare training and validation loss and accuracy over epochs. Poor results on both suggest underfitting; improving training with worsening validation suggests overfitting.",
-          "<strong>Record:</strong> save the Git commit, DVC data version, resolved configuration, environment, seeds, metrics, logs, and exact checkpoint. A result is reproducible only when its context is reproducible.",
-          "<strong>Colab:</strong> its local runtime can disappear, so copy valuable artifacts to Drive, object storage, or a DVC remote. Keep large datasets, checkpoints, and generated logs out of Git."
-        ]
+            "title": "Reusable preprocessing",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>How would you implement <code>normalize_pixels(raw_images)</code> to return <code>float32</code> pixels in <code>[0, 1]</code>, then demonstrate it on a freshly loaded raw image?</p>"
+            ],
+            "answers": [
+                  "<p>Call this function only on raw pixels; reuse it in training and serving.</p>",
+                  "<pre><code>def normalize_pixels(raw_images):\n    assert np.all((raw_images &gt;= 0) &amp; (raw_images &lt;= 255)), \"Input images must be in the range [0, 255].\"\n    return np.asarray(raw_images, dtype=np.float32) / 255.0\n\n(raw_train_images, _), _ = fashion_mnist.load_data()\nnormalized_example = normalize_pixels(raw_train_images[:1])</code></pre>"
+            ]
       },
       {
-        title: "Generalization, fairly measured",
-        prompt: "The saved run gives us a concrete gap—but the gap needs interpretation.",
-        questions: [
-          "What is the observed training–test accuracy gap?",
-          "Is the gap alone enough to prove overfitting?",
-          "Why is choosing the best of 20 models on the test set biased?"
-        ],
-        answers: [
-          "<strong>Gap:</strong> <code>89.17% − 87.25% = 1.92</code> percentage points for the saved run. A fresh run can differ slightly because initialization and training are stochastic.",
-          "<strong>Diagnosis:</strong> the gap alone does not prove overfitting. Inspect validation curves, repeated runs, a simple baseline, distribution shift, and class-level errors to explain it.",
-          "<strong>Fairness:</strong> choosing the best of many models on test accuracy adapts to random quirks in that test set. Select on validation data, freeze all decisions, and test once at the end."
-        ]
+            "title": "Inspect class balance",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>How would you count training examples in each class and display a (labeled) bar chart using NumPy and Matplotlib?</p>"
+            ],
+            "answers": [
+                  "<p>The use of class counts reveals imbalances that the image grid above may miss.</p>",
+                  "<pre><code>class_counts = np.bincount(train_labels, minlength=len(class_names))\nplt.figure(figsize=(10, 3))\nplt.bar(class_names, class_counts) # use class_names as x-ticks and class_counts as heights\nplt.xticks(rotation=45, ha='right')\nplt.ylabel('Training examples')\nplt.tight_layout()\nplt.show()</code></pre>"
+            ]
       },
       {
-        title: "Confidence & error analysis",
-        prompt: "A wrong answer can still arrive with a very confident softmax score.",
-        questions: [
-          "Which classes does the model confuse, and is the confusion plausible?",
-          "Does the largest softmax value prove calibration?",
-          "What do a confusion matrix and per-class recall add?",
-          "What should happen before changing the architecture?"
-        ],
-        answers: [
-          "<strong>Common confusion:</strong> Shirt ↔ T-shirt/top is visually plausible at 28×28 resolution. Still, cite an actual index from the current run and compare its true label, prediction, and leading scores.",
-          "<strong>Confidence:</strong> no—softmax only normalizes the model's scores and can be sharp even when wrong. Calibration needs held-out measurement, such as a reliability diagram.",
-          "<strong>Class metrics:</strong> a confusion matrix reveals which pairs are mixed up; per-class recall reveals which true classes are missed. Overall accuracy averages these patterns away.",
-          "<strong>Diagnose first:</strong> inspect examples, label quality, balance, and error patterns before changing the model. The diagnosis should determine whether to clean data, collect examples, or alter the architecture."
-        ]
+            "title": "Flatten and spatial structure",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why does <code>Flatten</code> make a dense network easy to build, yet provide less useful structure for images than convolutional layers? Answer in at most two sentences.</p>"
+            ],
+            "answers": [
+                  "<p><code>Flatten</code> creates a 1-D vector preserving each pixel and its positional order. Convolutions explicitly use local neighborhoods and shared filters. Dense layers must learn spatial relationships without that structural information.</p>"
+            ]
       },
       {
-        title: "From notebook to production",
-        prompt: "Turn a successful exploration into a testable, traceable, reversible system.",
-        questions: [
-          "How should config, reusable functions, training, and the entry point be separated?",
-          "What belongs in Git, DVC, and experiment storage?",
-          "What should CI verify before merge?",
-          "What is the deployment input/output contract?",
-          "How should promotion and rollback work?"
-        ],
-        answers: [
-          "<strong>Structure:</strong> configuration holds validated settings; train/eval functions contain reusable work; a small entry point parses arguments and orchestrates one run. Importing a module should not start training.",
-          "<strong>Versioning:</strong> use Git for code and small metadata, DVC for data and large artifacts, and run storage for logs/checkpoints. Link everything with one experiment ID.",
-          "<strong>CI:</strong> run linting, unit tests, configuration checks, and a tiny training smoke test before merge. Full-data experiments are slower and should run separately on suitable compute.",
-          "<strong>Contract:</strong> require a grayscale 28×28 image, known dtype/range, exact preprocessing, batch shape, and fixed class order. Reject malformed input clearly instead of guessing.",
-          "<strong>Release:</strong> define overall and per-class acceptance criteria before evaluation. Deploy immutable model versions, monitor them, and keep the previous approved version available for one-step rollback."
-        ]
+            "title": "Count trainable parameters",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>How would you inspect the model summary and total parameter count, then verify the count from the two dense layers? Include biases in your calculation.</p>"
+            ],
+            "answers": [
+                  "<p>Flatten has no parameters; a dense layer has one weight per input-output connection and one bias per output.</p>",
+                  "<pre><code>model.summary()\nexpected_parameters = (28 * 28 + 1) * 128 + (128 + 1) * 10\n# reasoning: (input features + bias) * units in first layer + (units in first layer + bias) * units in second layer\nprint('Expected:', expected_parameters)\nprint('Actual:', model.count_params())\nassert model.count_params() == expected_parameters  # 101,770</code></pre>"
+            ]
+      },
+      {
+            "title": "Match loss to outputs",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why is <code>SparseCategoricalCrossentropy(from_logits=True)</code> an appropriate loss function for our model, and how is the loss calculated for an example label <code>2</code>?</p>"
+            ],
+            "answers": [
+                  "<p>First, we supply integer labels, and <code>SparseCategoricalCrossentropy</code> accepts integer labels rather than <code>CategoricalCrossentropy</code> which accepts a one-hot encoded vector.</p><p>Second, because the network was not configured with a softmax activation as the final layer, it emits logits; applying <code>from_logits=True</code> then applies softmax for us, and converts the output vector into a categorial distribution (sums to 1) for the loss calculation.</p><p>We can calculate the loss for example label <code>2</code> as follows:</p><p>Taking <code>[z_0, ..., z_N]</code> to represent the output logits vector, softmax gives the probability for class <code>i</code>:</p><p><div class=\"equation\"><code>p_i = exp(z_i) / sum(exp(z_j))</code></div></p><p>If the correct label is class <code>2</code>, the loss for that image is:</p><p><div class=\"equation\"><code>L = -log(p_2)</code></div></p>"
+            ]
+      },
+      {
+            "title": "Validation and TensorBoard",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>How would you rewrite the upcoming <code>model.fit</code> call to:<br>- reserve 20% of training data for validation,<br>- save the history,<br>- add a TensorBoard callback,<br>- and use configuration values for epochs and batch size. </p><p>The runnable answer below performs this training step; the following tutorial code cell saves the weights.</p>"
+            ],
+            "answers": [
+                  "<p>Validation examples are held out from weight updates. Use a distinct log directory per experiment; project run IDs can include the Git commit.</p>",
+                  "<pre><code>config = {'epochs': 5, 'batch_size': 32}\ntensorboard = tf.keras.callbacks.TensorBoard(log_dir='logs/fit/run_01')\nhistory = model.fit(\n    train_images, train_labels,\n    epochs=config['epochs'],\n    batch_size=config['batch_size'],\n    validation_split=0.2,\n    callbacks=[tensorboard],\n)</code></pre>"
+            ]
+      },
+      {
+            "title": "Weights are only one artifact",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why are saved weights alone insufficient to reproduce or deploy this experiment? Provide a list of other artifacts that are needed to reproduce or deploy the model.</p>"
+            ],
+            "answers": [
+                  "<p>Besides weights, we need:<br>- the matching architecture<br>- preprocessing<br>- the class order<br>- code library versions<br>- data versions<br>- configuration<br>- environment details</p>"
+            ]
+      },
+      {
+            "title": "Measure the accuracy gap",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>How would you evaluate the final model on the training data and calculate training-to-test accuracy improvement in percentage points? Use the existing test_acc.</p>"
+            ],
+            "answers": [
+                  "<p>Evaluate the final weights on both sets for a direct comparison; the last epoch's training metric mixes predictions made while weights were changing.</p>",
+                  "<pre><code>_, final_train_acc = model.evaluate(train_images, train_labels, verbose=0)\ngap_percentage_points = 100 * (final_train_acc - test_acc)\nprint(f'Final-model accuracy gap: {gap_percentage_points:.2f} percentage points')</code></pre>"
+            ]
+      },
+      {
+            "title": "Interpret generalization",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why is a training-test accuracy gap alone insufficient proof of overfitting? Answer in at most two sentences.</p>"
+            ],
+            "answers": [
+                  "<p>A train\u2013test gap alone doesn\u2019t show that the model memorized its training data; finite samples can differ in difficulty. Compare training and validation performance over epochs: training performance improving while validation performance worsens is stronger evidence of overfitting.</p>"
+            ]
+      },
+      {
+            "title": "Softmax for interpretation",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why add softmax for predictions when the training model already outputs ten logits? Answer in at most two sentences.</p>"
+            ],
+            "answers": [
+                  "<p>Softmax converts unrestricted scores into nonnegative values that sum to one, making them easier to interpret. It preserves the winning class, so it is useful for reporting confidence but unnecessary for finding the largest score.</p>"
+            ]
+      },
+      {
+            "title": "Report a prediction",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>How would you print the predicted class name, its softmax score, and the true class name for test image 0 using <code>predictions</code> and <code>class_names</code>?</p>"
+            ],
+            "answers": [
+                  "<p>The index that attains the largest score must be mapped to the class-name list.</p>",
+                  "<pre><code>image_index = 0\npredicted_class = int(np.argmax(predictions[image_index])) # Get the index of the class with the highest predicted probability\nscore = predictions[image_index, predicted_class] # Get the predicted probability for the predicted class\ntrue_class = int(test_labels[image_index]) # Get the true class label for the image\nprint(f'Predicted: {class_names[predicted_class]} ({score:.1%})')\nprint(f'True: {class_names[true_class]}')</code></pre>"
+            ]
+      },
+      {
+            "title": "Find a real mistake",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>How would you find the first incorrectly classified test image and show it using <code>plot_image</code>? Make it robust, i.e., also handle the case where no mistakes exist.</p>"
+            ],
+            "answers": [
+                  "<p>Find an error from the current predictions. Note that a hard-coded example can be correct in another run.</p>",
+                  "<pre><code>predicted_labels = np.argmax(predictions, axis=1)\nwrong_indices = np.flatnonzero(predicted_labels != test_labels) \n # Return the indices of the test set where the predicted labels do not match the true labels\nif wrong_indices.size:\n    mistake_index = int(wrong_indices[0])\n    plt.figure(figsize=(4, 4))\n    plot_image(mistake_index, predictions[mistake_index], test_labels, test_images)\n    plt.show()\nelse:\n    print('No mistakes found in this test set.')</code></pre>"
+            ]
+      },
+      {
+            "title": "Confident errors",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Why can an incorrect prediction still have a very high softmax score? Answer in at most two sentences.</p>"
+            ],
+            "answers": [
+                  "<p>Softmax reports relative preference among available classes. Ambiguous or unfamiliar inputs can produce extreme scores, therefore, calibration must be assessed by comparing scores with actual correctness on held-out examples from the test set.</p>"
+            ]
+      },
+      {
+            "title": "Single-image inference",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>How would you write <code>predict_clothing(image, probability_model)</code> for one (already normalized) 28x28 image? Validate its shape and finite <code>[0, 1]</code> values, add a batch dimension, and return the class name and score.</p>"
+            ],
+            "answers": [
+                  "<p>This function makes the satisfying the input contract explicit. Normalize raw images using the same function as training images.</p>",
+                  "<pre><code>def predict_clothing(image, probability_model):\n    image = np.asarray(image, dtype=np.float32)\n    if image.shape != (28, 28):\n        raise ValueError('Expected one 28 x 28 image')\n    if not np.isfinite(image).all() or image.min() &lt; 0 or image.max() &gt; 1:\n        raise ValueError('Expected finite pixel values in [0, 1]')\n    scores = probability_model.predict(image[np.newaxis, ...], verbose=0)[0] # Get the predicted probabilities for each class\n    label = int(np.argmax(scores)) # Get the index of the class with the highest predicted probability\n    return class_names[label], float(scores[label]) # Get the predicted class name and the predicted probability for that class\n\nprint(predict_clothing(test_images[1], probability_model))</code></pre>"
+            ]
+      },
+      {
+            "title": "A reusable model and CI smoke test",
+            "prompt": "Discuss the question, then reveal its answer.",
+            "questions": [
+                  "<p>Right now, the notebook builds the model with the layer size fixed at 128. How would you extract model construction into <code>build_model(hidden_units=128)</code> and write a small CI smoke test that checks output shape and completes one training step on synthetic data?</p>"
+            ],
+            "answers": [
+                  "<p>Place the builder in <code>train_eval.py</code>, the settings in a configuration, and the smoke test in your tests. The test checks that the pipeline runs.</p>",
+                  "<pre><code>def build_model(hidden_units=128):\n    return tf.keras.Sequential([\n        tf.keras.Input(shape=(28, 28)),\n        tf.keras.layers.Flatten(),\n        tf.keras.layers.Dense(hidden_units, activation='relu'),\n        tf.keras.layers.Dense(10),\n    ])\n\nsmoke_model = build_model(hidden_units=8)\nsmoke_model.compile(\n    optimizer='adam',\n    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),\n    metrics=['accuracy'],\n)\nsmoke_images = np.zeros((2, 28, 28), dtype=np.float32)\nsmoke_labels = np.array([0, 1], dtype=np.int32)\nassert tuple(smoke_model(smoke_images).shape) == (2, 10)\nsmoke_loss, _ = smoke_model.train_on_batch(smoke_images, smoke_labels)\nassert np.isfinite(smoke_loss)\nprint('Smoke test passed')</code></pre>"
+            ]
       }
-    ];
+];
 
     const els = {
       slide: document.querySelector('#slide'),
@@ -629,7 +711,7 @@
         const dot = document.createElement('button');
         dot.type = 'button';
         dot.className = 'dot';
-        dot.setAttribute('aria-label', `Go to learning check ${index + 1}: ${slide.title}`);
+        dot.setAttribute('aria-label', `Go to question ${index + 1}: ${slide.title}`);
         dot.addEventListener('click', () => show(index));
         els.dots.appendChild(dot);
       });
@@ -640,17 +722,15 @@
       revealedCount = 0;
       const data = slides[current];
 
-      els.slide.style.animation = 'none';
-      void els.slide.offsetWidth;
-      els.slide.style.animation = '';
       els.slide.classList.remove('revealed');
-      els.eyebrow.textContent = current === slides.length - 1 ? 'Final learning check' : `Learning check ${current + 1}`;
+      els.eyebrow.textContent = `Question ${current + 1} of ${slides.length}`;
       els.title.textContent = data.title;
       els.prompt.textContent = data.prompt;
-      els.questions.innerHTML = data.questions.map((question, i) =>
-        `<li><span class="number">${i + 1}</span><span>${question}</span></li>`
+      els.questions.innerHTML = data.questions.map(question =>
+        `<li>${question}</li>`
       ).join('');
       els.answers.innerHTML = data.answers.map(answer => `<li>${answer}</li>`).join('');
+      els.answers.scrollTop = 0;
       els.counter.textContent = `${current + 1} / ${slides.length}`;
       els.progress.style.width = `${((current + 1) / slides.length) * 100}%`;
       els.previous.disabled = current === 0;
@@ -666,7 +746,11 @@
       const total = slides[current].answers.length;
       const answerItems = [...els.answers.children];
       els.slide.classList.toggle('revealed', revealedCount > 0);
-      answerItems.forEach((item, index) => item.classList.toggle('visible', index < revealedCount));
+      answerItems.forEach((item, index) => {
+        const visible = index < revealedCount;
+        item.classList.toggle('visible', visible);
+        item.setAttribute('aria-hidden', String(!visible));
+      });
       els.answerCount.textContent = revealedCount > 0 ? `${revealedCount} of ${total}` : 'Key ideas';
 
       if (revealedCount < total) {
